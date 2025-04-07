@@ -1,0 +1,1338 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador de Constelação Familiar v5.1 (Peão Corrigido)</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: sans-serif;
+            background-color: #f0f0f0;
+        }
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            cursor: grab; /* Default cursor */
+        }
+        #controls-panel {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            width: 280px;
+            max-height: calc(100vh - 20px);
+            overflow-y: auto;
+            background-color: rgba(255, 255, 255, 0.92);
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 3;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+        }
+        #controls-panel h3 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 5px;
+            flex-shrink: 0;
+        }
+        .control-group {
+            margin-bottom: 15px;
+            flex-shrink: 0;
+        }
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+        .control-group input[type="text"],
+        .control-group input[type="color"],
+        .control-group input[type="range"], /* Style for range */
+        .control-group button,
+        .control-group select {
+            width: calc(100% - 16px);
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 0.9em;
+            box-sizing: border-box;
+        }
+         .control-group input[type="color"] {
+            width: 50px;
+            height: 30px;
+            padding: 2px;
+            vertical-align: middle;
+            margin-left: 5px;
+            display: inline-block; /* Changed for alignment */
+            width: auto; /* Auto width */
+         }
+         .control-group input[type="range"] {
+            padding: 0; /* Remove padding for range */
+            margin-top: 5px;
+            height: 20px; /* Adjust height */
+         }
+        .control-group button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .control-group button:hover {
+            background-color: #367c39;
+        }
+         .control-group button.remove-btn {
+            background-color: #f44336;
+         }
+         .control-group button.remove-btn:hover {
+            background-color: #d32f2f;
+         }
+         .control-group button.action-btn {
+            background-color: #007bff;
+            margin-top: 5px;
+         }
+         .control-group button.action-btn:hover {
+            background-color: #0056b3;
+         }
+         .control-group button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+         }
+        .size-control-label { /* Specific style for size label */
+            display: inline-block; /* Align next to slider */
+            vertical-align: middle;
+            margin-right: 10px;
+        }
+        #size-value { /* Style for size value display */
+             font-weight: normal;
+             font-size: 0.9em;
+             color: #555;
+             vertical-align: middle;
+        }
+
+        #selected-info {
+            margin-top: 15px;
+            padding-top: 10px;
+            border-top: 1px solid #ccc;
+            flex-shrink: 0;
+        }
+        #selected-info p {
+            margin: 5px 0;
+            font-size: 0.85em;
+            line-height: 1.4;
+        }
+         #selected-info strong {
+            color: #0056b3;
+         }
+        .disclaimer {
+            font-size: 0.75em;
+            color: #666;
+            margin-top: auto;
+            padding-top: 10px;
+            border-top: 1px dashed #ccc;
+            line-height: 1.3;
+            flex-shrink: 0;
+        }
+
+        /* Painel de Guia */
+        #guidance-panel {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            width: 300px;
+            max-height: calc(100vh - 20px);
+            overflow-y: auto;
+            background-color: rgba(230, 240, 255, 0.95);
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+            z-index: 2;
+            color: #224;
+            display: none;
+            flex-direction: column;
+        }
+        #guidance-panel.visible { display: flex; }
+         #guidance-panel h4 { margin-top: 0; margin-bottom: 10px; font-size: 1.05em; color: #003366; border-bottom: 1px solid #aaccff; padding-bottom: 5px; flex-shrink: 0; }
+        #guidance-content { font-size: 0.9em; line-height: 1.5; margin-bottom: 15px; flex-grow: 1; overflow-y: auto; }
+         #guidance-content ul { padding-left: 20px; margin-top: 5px; }
+         #guidance-content li { margin-bottom: 5px; }
+        #guidance-navigation { display: flex; justify-content: space-between; margin-top: 10px; flex-shrink: 0; }
+        #guidance-navigation button { padding: 6px 12px; font-size: 0.85em; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+         #guidance-navigation button:disabled { background-color: #cccccc; cursor: not-allowed; }
+         #end-exercise-btn { background-color: #dc3545; }
+
+        #exercise-info { font-size: 0.85em; color: #555; margin-top: 5px; margin-bottom: 10px; padding: 8px; background-color: #e9ecef; border-radius: 4px; }
+
+        /* Modal de Análise Final */
+        #analysis-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 90%;
+            max-width: 500px;
+            max-height: 80vh;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+            z-index: 10; /* Acima de tudo */
+            padding: 25px;
+            display: none; /* Começa escondido */
+            flex-direction: column;
+        }
+        #analysis-modal.visible { display: flex; }
+        #analysis-modal h4 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            text-align: center;
+            color: #333;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        #analysis-content {
+            overflow-y: auto; /* Scroll se o conteúdo for longo */
+            margin-bottom: 20px;
+            font-size: 0.9em;
+            line-height: 1.6;
+            color: #444;
+        }
+         #analysis-content strong { color: #0056b3; }
+         #analysis-content ul { padding-left: 18px; }
+         #analysis-content li { margin-bottom: 8px; }
+        #close-analysis-btn {
+            padding: 10px 20px;
+            background-color: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            align-self: center; /* Centraliza o botão */
+            margin-top: 10px;
+        }
+         #close-analysis-btn:hover { background-color: #5a6268; }
+         .modal-disclaimer {
+            font-size: 0.75em;
+            color: #777;
+            text-align: center;
+            margin-top: 15px;
+            border-top: 1px dashed #ddd;
+            padding-top: 10px;
+         }
+
+    </style>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+</head>
+<body>
+    <div id="canvas-container"></div>
+
+    <div id="controls-panel">
+        <h3>Simulador de Constelação</h3>
+        <div class="control-group">
+            <label for="exercise-select">Selecionar Exercício:</label>
+            <select id="exercise-select">
+                <option value="free">Exploração Livre</option>
+            </select>
+            <div id="exercise-info">Selecione um exercício acima.</div>
+            <button id="start-exercise-btn" class="action-btn" disabled>Iniciar Exercício</button>
+        </div>
+        <hr>
+        <div class="control-group">
+            <label for="rep-label">Rótulo do Novo Representante:</label>
+            <input type="text" id="rep-label" value="Novo">
+            <button id="add-rep-btn">Adicionar Representante</button>
+        </div>
+        <hr>
+        <div id="selected-controls" style="display: none;">
+            <h4>Representante Selecionado: <span id="selected-name"></span></h4>
+              <div class="control-group">
+                <label for="edit-label">Editar Rótulo:</label>
+                <input type="text" id="edit-label">
+                <label for="edit-color">Cor:</label>
+                <input type="color" id="edit-color">
+                <button id="update-rep-btn">Atualizar</button>
+              </div>
+             <div class="control-group">
+                  <label for="edit-size" class="size-control-label">Tamanho:</label>
+                  <input type="range" id="edit-size" min="0.5" max="2.5" step="0.1" value="1">
+                  <span id="size-value">1.0x</span>
+             </div>
+             <div class="control-group">
+                <label>Girar (Use o mouse + Shift)</label>
+                <p style="font-size: 0.8em; color: #555;">Clique e arraste com Shift pressionado sobre o representante para girá-lo.</p>
+            </div>
+             <div class="control-group">
+                  <label>Mover Câmera (Use WSAD)</label>
+                  <p style="font-size: 0.8em; color: #555;">Use as teclas W, S, A, D para mover a visão pelo campo.</p>
+             </div>
+            <div class="control-group">
+                <button id="remove-rep-btn" class="remove-btn">Remover Selecionado</button>
+            </div>
+              <div id="selected-info">
+                <p><strong>Posição:</strong> <span id="selected-pos"></span></p>
+                <p><strong>Olhando para:</strong> <span id="selected-dir"></span></p>
+                <div id="proximity-info"></div>
+                <div id="reflection-prompt"></div>
+              </div>
+              <hr>
+        </div>
+        <div class="disclaimer">
+            <strong>Aviso:</strong> Este é um simulador para fins educativos e de exploração pessoal. Não substitui terapia ou acompanhamento profissional qualificado. As interpretações são baseadas em padrões espaciais gerais.
+        </div>
+    </div>
+
+    <div id="guidance-panel">
+        <h4 id="guidance-title">Guia do Exercício</h4>
+        <div id="guidance-content"><p>Siga as instruções passo a passo.</p></div>
+        <div id="guidance-navigation">
+            <button id="prev-step-btn" disabled>Anterior</button>
+            <span id="step-counter">Passo 1 / X</span>
+            <button id="next-step-btn">Próximo</button>
+        </div>
+         <button id="end-exercise-btn" class="action-btn remove-btn" style="margin-top: 15px;">Finalizar Exercício</button>
+    </div>
+
+    <div id="analysis-modal">
+        <h4>Análise da Disposição (Exploratória)</h4>
+        <div id="analysis-content">
+            </div>
+        <div class="modal-disclaimer">
+            Lembre-se: Esta análise é baseada em padrões espaciais e não substitui a percepção e o trabalho com um profissional.
+        </div>
+        <button id="close-analysis-btn">Fechar Análise</button>
+    </div>
+	
+	<script type="module">
+        // --- Importações ---
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        // CapsuleGeometry não é mais necessária para o peão padrão, mas pode ser útil para outros testes
+        // import { CapsuleGeometry } from 'three/addons/geometries/CapsuleGeometry.js';
+
+        // --- Constantes ---
+        // Constantes globais da geometria anterior removidas para evitar conflitos
+
+        const MOVE_SPEED = 0.2; // Speed for WSAD movement
+
+        // --- Variáveis Globais ---
+        let scene, camera, renderer, controls;
+        let groundPlane, gridHelper;
+        let representatives = [];
+        let selectedRepresentative = null;
+        let raycaster = new THREE.Raycaster();
+        let mouse = new THREE.Vector2();
+        let isDragging = false;
+        let isRotating = false;
+        let dragOffset = new THREE.Vector3();
+        let planeIntersect = new THREE.Vector3();
+        let initialRotationAngle = 0;
+        let shiftKeyPressed = false;
+        let clock = new THREE.Clock(); // Clock for delta time in movement
+
+        // --- Estado do Exercício ---
+        let currentExercise = null;
+        let currentStepIndex = 0;
+        let inExerciseMode = false;
+        let timelineMarkers = {};
+
+        // --- Estado de Movimento WSAD ---
+        const moveState = {
+            forward: false,
+            backward: false,
+            left: false,
+            right: false
+        };
+
+        // --- Elementos DOM ---
+        const canvasContainer = document.getElementById('canvas-container');
+        const controlsPanel = document.getElementById('controls-panel');
+        const addRepBtn = document.getElementById('add-rep-btn');
+        const repLabelInput = document.getElementById('rep-label');
+        const selectedControlsDiv = document.getElementById('selected-controls');
+        const selectedNameSpan = document.getElementById('selected-name');
+        const editLabelInput = document.getElementById('edit-label');
+        const editColorInput = document.getElementById('edit-color');
+        const updateRepBtn = document.getElementById('update-rep-btn');
+        const removeRepBtn = document.getElementById('remove-rep-btn');
+        const selectedPosSpan = document.getElementById('selected-pos');
+        const selectedDirSpan = document.getElementById('selected-dir');
+        const proximityInfoDiv = document.getElementById('proximity-info');
+        const reflectionPromptDiv = document.getElementById('reflection-prompt');
+        const exerciseSelect = document.getElementById('exercise-select');
+        const exerciseInfoDiv = document.getElementById('exercise-info');
+        const startExerciseBtn = document.getElementById('start-exercise-btn');
+        const guidancePanel = document.getElementById('guidance-panel');
+        const guidanceTitle = document.getElementById('guidance-title');
+        const guidanceContent = document.getElementById('guidance-content');
+        const prevStepBtn = document.getElementById('prev-step-btn');
+        const nextStepBtn = document.getElementById('next-step-btn');
+        const stepCounterSpan = document.getElementById('step-counter');
+        const endExerciseBtn = document.getElementById('end-exercise-btn');
+        const analysisModal = document.getElementById('analysis-modal');
+        const analysisContent = document.getElementById('analysis-content');
+        const closeAnalysisBtn = document.getElementById('close-analysis-btn');
+        const editSizeSlider = document.getElementById('edit-size'); // Size Slider
+        const sizeValueSpan = document.getElementById('size-value');   // Size Value Display
+
+
+        // --- Definição dos Exercícios (Sem alterações) ---
+        const exercises = {
+            'lugar': {
+                name: "Ocupar o Próprio Lugar",
+                reps: "~3-5",
+                description: "Explorar seu lugar no sistema e possíveis emaranhamentos.",
+                steps: [
+                    "Adicione um representante para 'Você'. Posicione-o no campo.",
+                    "Adicione representantes para figuras familiares chave (ex: 'Pai', 'Mãe', talvez um 'Padrão Repetitivo' ou 'Destino Difícil' de um ancestral com quem se identifica).",
+                    "Posicione esses representantes em relação a 'Você', como sentir que eles estão internamente.",
+                    "Observe as distâncias, direções e a sensação geral. Quem está perto? Quem está longe? Quem olha para quem?",
+                    "Reflita (usando o painel de info): Você está no seu lugar de filho(a)? Está assumindo responsabilidades que não são suas? Está olhando para seu próprio caminho?",
+                    "Experimente mover 'Você' para um lugar que sinta mais força e pertencimento. Observe como as relações mudam.",
+                    "Agradeça aos representantes. Quando estiver satisfeito(a) com a disposição final, clique em 'Analisar Disposição'." // Último passo
+                ]
+            },
+            'espelho': {
+                name: "Meta Espelho de Relacionamentos",
+                reps: "3-5",
+                description: "Explorar a dinâmica de relacionamentos específicos.",
+                steps: [
+                    "Escolha 1 ou 2 relacionamentos para explorar (ex: com parceiro(a), amigo(a), familiar).",
+                    "Adicione um representante para 'Você'.",
+                    "Adicione um representante para a 'Pessoa 1' (do relacionamento escolhido).",
+                    "Se escolheu um segundo relacionamento, adicione 'Pessoa 2'.",
+                    "Posicione os representantes no campo de acordo com como você percebe a dinâmica atual entre vocês.",
+                    "Observe as posições. Quem está mais perto/longe? Quem olha para quem? Qual a sensação?",
+                    "**Passo da Empatia (Mental):** Imagine-se no lugar da 'Pessoa 1'. Como ela vê 'Você'? O que ela sente na relação? (Use a visualização para apoiar essa reflexão).",
+                    "**Passo Neutro (Mental):** Imagine-se olhando para 'Você' e 'Pessoa 1' de fora. O que você percebe sobre a dinâmica que não via antes?",
+                    "Reflita: O que você gostaria que mudasse? Quais posturas suas poderiam facilitar isso?",
+                    "Se adicionou 'Pessoa 2', repita os passos de observação e empatia para essa relação.",
+                    "Agradeça aos representantes. Quando a disposição final estiver clara, clique em 'Analisar Disposição'." // Último passo
+                ]
+            },
+            'ordem': {
+                name: "Ordem Hierárquica",
+                reps: "~3-6",
+                description: "Refletir sobre a ordem hierárquica na família.",
+                steps: [
+                    "Adicione representantes para 'Você', 'Pai' e 'Mãe'.",
+                    "Se tiver irmãos, adicione representantes para eles ('Irmão Mais Velho', 'Irmã Mais Nova', etc.).",
+                    "Posicione 'Pai' e 'Mãe' lado a lado ou como sentir que representa a relação deles.",
+                    "Posicione 'Você' e seus irmãos (se houver) na ordem de nascimento, geralmente um pouco à frente dos pais.",
+                    "Observe a configuração. Você está no seu lugar correto de acordo com a ordem de chegada (nascimento)?",
+                    "Reflita (usando o painel de info): Você se sente 'maior' ou 'menor' que seus pais ou irmãos mais velhos?",
+                    "Você assume responsabilidades que seriam dos seus pais ou irmãos mais velhos?",
+                    "Experimente mover 'Você' para o lugar que corresponde à sua ordem de nascimento. Como se sente?",
+                    "Agradeça aos representantes. Quando a imagem final estiver definida, clique em 'Analisar Disposição'." // Último passo
+                ]
+            },
+             'timeline': {
+                name: "Linha do Tempo Sistêmica",
+                reps: "~5+",
+                description: "Visualizar eventos marcantes da vida em uma linha do tempo espacial.",
+                steps: [
+                    "Este exercício usa o eixo Z (profundidade) para representar o tempo.",
+                    "Adicione um representante para 'Nascimento' e posicione-o em uma extremidade do campo (ex: Z = -30).",
+                    "Adicione um representante para 'Futuro/Morte' e posicione-o na extremidade oposta (ex: Z = 30).",
+                    "Adicione um representante para 'Momento Presente' e posicione-o entre 'Nascimento' e 'Futuro', onde sentir que ele se encontra.",
+                    "Agora, adicione representantes para 'Eventos Marcantes Positivos' da sua vida. Posicione-os espacialmente ao longo do 'caminho' entre 'Nascimento' e 'Presente'. Use a posição X ou Y (altura) para diferenciá-los se desejar.",
+                    "Adicione representantes para 'Eventos Marcantes Negativos/Desafiadores'. Posicione-os também ao longo do caminho.",
+                    "Observe a distribuição espacial desses eventos. Há concentrações? Lacunas? Como você se sente olhando para essa representação da sua jornada?",
+                    "Reflita sobre como os eventos negativos podem ter gerado forças ou aprendizados (representados pelos positivos próximos ou posteriores).",
+                    "Olhe para o espaço entre 'Presente' e 'Futuro'. Quais 'Eventos Desejados' você adicionaria nesse espaço? Posicione-os.",
+                    "Reflita: Quais padrões ou crenças (talvez representados pelos eventos negativos) precisam ser vistos ou transformados para alcançar os 'Eventos Desejados'?",
+                    "Agradeça a todos os eventos e representantes. Quando a linha do tempo estiver completa, clique em 'Analisar Disposição'." // Último passo
+                ]
+            },
+            'beliefs': {
+                name: "Avaliação de Crenças Sistêmicas",
+                reps: "~5-13+",
+                description: "Explorar a relação entre suas crenças e as crenças parentais.",
+                steps: [
+                    "Adicione representantes para 'Você', 'Pai' e 'Mãe'. Posicione-os.",
+                    "Escolha um aspecto da vida para começar (ex: 'Felicidade'). Adicione um representante para ele.",
+                    "Adicione um representante para 'Crença dos Pais sobre [Aspecto]' (ex: 'Crença Pais - Felicidade'). Posicione-o em relação a 'Pai', 'Mãe' e 'Felicidade', como você percebe a crença deles.",
+                    "Adicione um representante para 'Minha Crença sobre [Aspecto]' (ex: 'Minha Crença - Felicidade'). Posicione-o em relação a 'Você', 'Felicidade' e 'Crença dos Pais'.",
+                    "Observe as posições e direções. 'Minha Crença' está alinhada com a dos pais? Está olhando para eles, para 'Você' ou para o aspecto ('Felicidade')?",
+                    "Reflita: Como você se sente em relação a essa configuração? Qual a origem da 'Minha Crença'?",
+                    "Repita os passos 2 a 6 para outros aspectos importantes: 'Amor', 'Sexo', 'Dinheiro', 'Sucesso', 'Deus'. Use o mesmo representante para 'Pai' e 'Mãe', mas crie novos para cada aspecto e crença associada.",
+                    "Após explorar os aspectos, reflita: Quais 'Crenças a Eliminar' você identificou? Adicione representantes para elas e veja onde se posicionam.",
+                    "Quais 'Crenças a Adicionar' (ou fortalecer) você deseja? Adicione representantes e posicione-os. Eles olham para onde?",
+                    "Observe a imagem final. Como a introdução das crenças a eliminar/adicionar muda a dinâmica?",
+                    "Agradeça aos representantes. Quando a exploração das crenças estiver completa, clique em 'Analisar Disposição'." // Último passo
+                ]
+            }
+        };
+
+        // --- Inicialização ---
+        function init() {
+            // Configuração da Cena, Câmera, Luzes, Renderer, Controles, Chão, Grid
+            scene = new THREE.Scene(); scene.background = new THREE.Color(0xeeeeee);
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000); camera.position.set(0, 15, 25); camera.lookAt(0, 0, 0);
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7); scene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8); directionalLight.position.set(10, 20, 15); directionalLight.castShadow = true; directionalLight.shadow.mapSize.width = 1024; directionalLight.shadow.mapSize.height = 1024; scene.add(directionalLight);
+            renderer = new THREE.WebGLRenderer({ antialias: true }); renderer.setSize(window.innerWidth, window.innerHeight); renderer.shadowMap.enabled = true; canvasContainer.appendChild(renderer.domElement);
+            controls = new OrbitControls(camera, renderer.domElement); controls.enableDamping = true; controls.dampingFactor = 0.1; controls.screenSpacePanning = true; // Enable for better WSAD compat
+            controls.minDistance = 5; controls.maxDistance = 80; controls.maxPolarAngle = Math.PI / 2 - 0.05;
+            const groundGeometry = new THREE.PlaneGeometry(100, 100); const groundMaterial = new THREE.MeshStandardMaterial({ color: 0xd8e2dc, roughness: 0.8, metalness: 0.2, side: THREE.DoubleSide }); groundPlane = new THREE.Mesh(groundGeometry, groundMaterial); groundPlane.rotation.x = -Math.PI / 2; groundPlane.receiveShadow = true; groundPlane.name = "GroundPlane"; scene.add(groundPlane);
+            gridHelper = new THREE.GridHelper(100, 100, 0xcccccc, 0xdddddd); gridHelper.position.y = 0.01; scene.add(gridHelper);
+
+            // Event Listeners
+            window.addEventListener('resize', onWindowResize);
+            canvasContainer.addEventListener('mousemove', onMouseMove);
+            canvasContainer.addEventListener('mousedown', onMouseDown);
+            canvasContainer.addEventListener('mouseup', onMouseUp);
+            window.addEventListener('keydown', onKeyDown);
+            window.addEventListener('keyup', onKeyUp);
+            addRepBtn.addEventListener('click', addRepresentative);
+            updateRepBtn.addEventListener('click', updateSelectedRepresentative);
+            removeRepBtn.addEventListener('click', removeSelectedRepresentative);
+            editSizeSlider.addEventListener('input', updateSelectedSize); // Listener for size slider
+            exerciseSelect.addEventListener('change', updateExerciseInfo);
+            startExerciseBtn.addEventListener('click', startExercise);
+            prevStepBtn.addEventListener('click', prevGuidanceStep);
+            nextStepBtn.addEventListener('click', handleNextStepOrAnalyze);
+            endExerciseBtn.addEventListener('click', endExercise);
+            closeAnalysisBtn.addEventListener('click', closeAnalysisModal);
+
+            // Preencher Select e Iniciar
+            populateExerciseSelect();
+            updateExerciseInfo();
+            animate();
+        }
+
+         // --- Funções de Criação/Manipulação de Representantes (MODIFIED) ---
+
+         /**
+          * Creates a board game pawn-like representative mesh.
+          * Uses Cylinder (base), Cone (body), Sphere (head).
+          */
+         function createPawnRepresentative(label = "Rep", position = new THREE.Vector3(0, 0, 0), color = Math.random() * 0xffffff) {
+             const group = new THREE.Group();
+
+             // --- Define Pawn Dimensions ---
+             const PAWN_BASE_RADIUS = 0.4;
+             const PAWN_BASE_HEIGHT = 0.2;
+             const PAWN_BODY_TOP_RADIUS = 0.15; // Tapered body
+             const PAWN_BODY_HEIGHT = 0.7;
+             const PAWN_HEAD_RADIUS = 0.20;
+
+             // --- Calculate Y Offset to place bottom of base at Y=0 ---
+             // The group's origin will be lifted by half the base height.
+             const PAWN_BASE_OFFSET_Y = PAWN_BASE_HEIGHT / 2; // Calculated LOCALLY based on THIS geometry
+             group.position.copy(position); // Set X and Z from input
+             group.position.y = PAWN_BASE_OFFSET_Y; // Set initial Y position
+
+             // --- Material (Shared for uniform color) ---
+             const pawnMaterial = new THREE.MeshStandardMaterial({
+                 color: color,
+                 roughness: 0.6,
+                 metalness: 0.1
+             });
+
+             // --- Base (Cylinder) ---
+             const baseGeometry = new THREE.CylinderGeometry(PAWN_BASE_RADIUS, PAWN_BASE_RADIUS, PAWN_BASE_HEIGHT, 24);
+             const baseMesh = new THREE.Mesh(baseGeometry, pawnMaterial);
+             // Position the center of the base cylinder at the group's origin Y (which is already offset)
+             baseMesh.position.y = 0; // Relative to group's origin
+             baseMesh.castShadow = true;
+             baseMesh.receiveShadow = true;
+             baseMesh.name = "PawnBase";
+             group.add(baseMesh);
+
+             // --- Body (Tapered Cylinder/Cone) ---
+             // Using a cylinder with different top/bottom radii creates a truncated cone (classic pawn shape)
+             const bodyGeometry = new THREE.CylinderGeometry(PAWN_BODY_TOP_RADIUS, PAWN_BASE_RADIUS, PAWN_BODY_HEIGHT, 24);
+             const bodyMesh = new THREE.Mesh(bodyGeometry, pawnMaterial);
+             // Position the center of the body on top of the base center
+             bodyMesh.position.y = (PAWN_BASE_HEIGHT / 2) + (PAWN_BODY_HEIGHT / 2); // Relative to group's origin
+             bodyMesh.castShadow = true;
+             bodyMesh.receiveShadow = true;
+             bodyMesh.name = "PawnBody";
+             group.add(bodyMesh);
+
+             // --- Head (Sphere) ---
+             const headGeometry = new THREE.SphereGeometry(PAWN_HEAD_RADIUS, 16, 12);
+             const headMesh = new THREE.Mesh(headGeometry, pawnMaterial);
+             // Position the center of the head on top of the body center
+             headMesh.position.y = (PAWN_BASE_HEIGHT / 2) + PAWN_BODY_HEIGHT + PAWN_HEAD_RADIUS; // Relative to group's origin
+             headMesh.castShadow = true;
+             headMesh.receiveShadow = true;
+             headMesh.name = "PawnHead";
+             group.add(headMesh);
+
+             // --- Direction Arrow (Cone) ---
+             const arrowHeight = 0.3; // Smaller arrow maybe
+             const arrowRadius = 0.1;
+             const arrowGeometry = new THREE.ConeGeometry(arrowRadius, arrowHeight, 8);
+             const arrowMaterial = new THREE.MeshStandardMaterial({ color: 0x333333 }); // Dark grey
+             const arrowMesh = new THREE.Mesh(arrowGeometry, arrowMaterial);
+             // Position arrow relative to the pawn body
+             // Place it near the middle height of the body, slightly in front
+             arrowMesh.position.set(
+                 0,
+                 (PAWN_BASE_HEIGHT / 2) + (PAWN_BODY_HEIGHT * 0.6), // Y: Mid-upper part of the body
+                 PAWN_BASE_RADIUS * 0.8 // Z: Slightly in front of the widest part of the base/body
+             );
+             arrowMesh.rotation.x = -Math.PI / 2; // Point Forward (along group's -Z)
+
+             arrowMesh.name = "DirectionArrow";
+             group.add(arrowMesh);
+
+             // --- User Data ---
+             group.userData = {
+                 id: THREE.MathUtils.generateUUID(),
+                 label: label,
+                 color: color, // Store the initial color number
+                 baseOffsetY: PAWN_BASE_OFFSET_Y, // <<<<<< STORE the calculated offset for THIS pawn
+                 type: "Representative",
+                 currentScale: 1.0 // Initial scale
+             };
+             group.name = `Representative_${label}`; // Group name for identification
+
+             // --- Add to Scene and Array ---
+             scene.add(group);
+             representatives.push(group);
+             return group;
+         }
+
+         function addRepresentative() {
+             const label = repLabelInput.value.trim() || "Novo";
+             const x = (Math.random() - 0.5) * 10;
+             const z = (Math.random() - 0.5) * 10;
+             const colorValue = Math.random() * 0xffffff;
+             // Y position will be set inside createPawnRepresentative
+             createPawnRepresentative(label, new THREE.Vector3(x, 0, z), colorValue);
+             repLabelInput.value = "Novo";
+         }
+		 
+		 function selectRepresentative(representative) {
+             if (selectedRepresentative === representative) return;
+
+             // Reset previous selection highlight
+             if (selectedRepresentative) {
+                 selectedRepresentative.traverse((child) => {
+                     if (child.isMesh && child.material && child.material.emissive) {
+                         child.material.emissive.setHex(0x000000);
+                     }
+                 });
+             }
+
+             selectedRepresentative = representative;
+
+             if (representative) {
+                 selectedNameSpan.textContent = representative.userData.label;
+                 editLabelInput.value = representative.userData.label;
+
+                 // Apply highlight to new selection
+                 let foundColor = null; // To set color picker reliably
+                 representative.traverse((child) => {
+                     if (child.isMesh && child.material && child.name !== 'DirectionArrow') { // Don't highlight arrow
+                         if (child.material.emissive) {
+                             child.material.emissive.setHex(0x555555);
+                         }
+                         // Store color from the first pawn part found
+                         if (!foundColor && child.material.color) {
+                             foundColor = "#" + child.material.color.getHexString();
+                         }
+                     }
+                 });
+                 // Set color picker value from found color or fallback to userData
+                 editColorInput.value = foundColor || ("#" + new THREE.Color(representative.userData.color).getHexString());
+
+
+                 // Update Size Slider
+                 const currentScale = representative.userData.currentScale || 1.0;
+                 editSizeSlider.value = currentScale;
+                 sizeValueSpan.textContent = `${currentScale.toFixed(1)}x`;
+
+                 selectedControlsDiv.style.display = 'block';
+                 updateSelectedInfo();
+             } else {
+                 selectedControlsDiv.style.display = 'none';
+                 // Reset color picker if nothing is selected
+                 editColorInput.value = '#ffffff'; // Or a default color
+             }
+         }
+
+         function updateSelectedRepresentative() {
+             if (!selectedRepresentative) return;
+
+             // Update Label
+             const newLabel = editLabelInput.value.trim() || selectedRepresentative.userData.label;
+             selectedRepresentative.userData.label = newLabel;
+             selectedRepresentative.name = `Representative_${newLabel}`;
+             selectedNameSpan.textContent = newLabel;
+
+             // Update Color
+             const newColorHex = editColorInput.value;
+             const newColor = new THREE.Color(newColorHex);
+             selectedRepresentative.userData.color = newColor.getHex(); // Store the hex value
+
+             selectedRepresentative.traverse((child) => {
+                 // Apply color to all pawn parts except the direction arrow
+                 if (child.isMesh && child.material && child.name !== 'DirectionArrow') {
+                     // Assuming material is shared or cloning is not needed
+                     child.material.color.set(newColor);
+                 }
+             });
+
+             updateSelectedInfo(); // Refresh info display
+         }
+
+         /**
+          * Updates the scale of the selected representative based on the slider.
+          */
+         function updateSelectedSize() {
+             if (!selectedRepresentative) return;
+
+             const newScale = parseFloat(editSizeSlider.value);
+             sizeValueSpan.textContent = `${newScale.toFixed(1)}x`; // Update display
+
+             selectedRepresentative.scale.set(newScale, newScale, newScale);
+             selectedRepresentative.userData.currentScale = newScale; // Store current scale
+
+             // Adjust Y position to keep the base on the ground using offset from userData
+             const baseOffsetY = selectedRepresentative.userData.baseOffsetY; // <<< Pegar de userData
+             if (typeof baseOffsetY === 'number') { // <<< Verificar se existe
+                  selectedRepresentative.position.y = baseOffsetY * newScale;
+             } else {
+                  console.warn("userData.baseOffsetY não encontrado para", selectedRepresentative.userData.label);
+                  // Fallback (pode causar posicionamento incorreto, mas evita erro)
+                  selectedRepresentative.position.y = (0.1) * newScale; // Usa 0.1 como fallback (base_height/2 do novo peão)
+             }
+
+             // Update info panel if needed (position changed slightly)
+             updateSelectedInfo();
+         }
+
+
+         function removeSelectedRepresentative() {
+             if (!selectedRepresentative) return;
+             const index = representatives.indexOf(selectedRepresentative);
+             if (index > -1) {
+                 representatives.splice(index, 1);
+             }
+             // Properly dispose of geometry and material if needed for complex scenes
+             scene.remove(selectedRepresentative);
+             // Recursively dispose? For now, just remove from scene.
+             selectRepresentative(null); // Deselect
+         }
+
+         function removeAllRepresentatives() {
+             const repsToRemove = [...representatives]; // Create copy for iteration
+             repsToRemove.forEach(rep => {
+                 const index = representatives.indexOf(rep);
+                 if (index > -1) {
+                     representatives.splice(index, 1);
+                 }
+                 scene.remove(rep);
+                 // TODO: Add proper disposal of geometries and materials if memory becomes an issue
+             });
+             selectRepresentative(null);
+             timelineMarkers = {}; // Clear timeline specific markers too
+         }
+
+
+         // --- Lógica de Interação (Raycasting, Drag, Rotate - MODIFIED) ---
+
+         function updateMouseCoords(event) {
+             const rect = canvasContainer.getBoundingClientRect();
+             mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+             mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+         }
+
+         function getIntersectedObject(event) {
+             updateMouseCoords(event);
+             raycaster.setFromCamera(mouse, camera);
+
+             // Collect all mesh descendants of representative groups
+             const potentialTargets = [];
+             representatives.forEach(rep => {
+                 rep.traverse((child) => {
+                     if (child.isMesh) {
+                         potentialTargets.push(child);
+                     }
+                 });
+             });
+
+             const intersects = raycaster.intersectObjects(potentialTargets, false); // Don't check recursively here
+
+             if (intersects.length > 0) {
+                 // Find the topmost group ancestor that is a representative
+                 let intersectedObject = intersects[0].object;
+                 while (intersectedObject.parent && !representatives.includes(intersectedObject)) {
+                     intersectedObject = intersectedObject.parent;
+                 }
+                 // Check if we found a representative group
+                 if (representatives.includes(intersectedObject)) {
+                     return intersectedObject;
+                 }
+             }
+             return null; // No representative intersected
+         }
+
+         function getGroundIntersection(event) {
+             updateMouseCoords(event);
+             raycaster.setFromCamera(mouse, camera);
+             const intersects = raycaster.intersectObject(groundPlane);
+             if (intersects.length > 0) {
+                 return intersects[0].point;
+             }
+             return null;
+         }
+
+         function onMouseDown(event) {
+             if (event.button !== 0) return; // Only left click
+
+             const intersectedRep = getIntersectedObject(event);
+
+             if (shiftKeyPressed && intersectedRep && intersectedRep === selectedRepresentative) {
+                 // Start Rotation
+                 isRotating = true;
+                 controls.enabled = false; // Disable OrbitControls during rotation
+                 const repPosScreen = selectedRepresentative.position.clone().project(camera);
+                 initialRotationAngle = Math.atan2(mouse.y - repPosScreen.y, mouse.x - repPosScreen.x) - selectedRepresentative.rotation.y;
+                 canvasContainer.style.cursor = 'crosshair';
+             } else if (intersectedRep) {
+                 // Select and Start Dragging
+                 if (selectedRepresentative !== intersectedRep) {
+                     selectRepresentative(intersectedRep);
+                 }
+                 isDragging = true;
+                 controls.enabled = false; // Disable OrbitControls during drag
+                 const intersectionPoint = getGroundIntersection(event);
+                 if (intersectionPoint) {
+                     // Calculate offset from intersection point to object's current position
+                     dragOffset.copy(intersectionPoint).sub(selectedRepresentative.position);
+                 } else {
+                     // Fallback if no ground intersection (should be rare)
+                     dragOffset.set(0, 0, 0);
+                 }
+                 canvasContainer.style.cursor = 'grabbing';
+             } else {
+                 // Clicked on empty space or ground
+                 selectRepresentative(null); // Deselect
+                 isDragging = false;
+                 isRotating = false;
+                 // Don't disable controls here, allow normal orbit panning/rotating
+             }
+         }
+
+         function onMouseMove(event) {
+             updateMouseCoords(event); // Update mouse coords regardless of state
+
+             if (isRotating && selectedRepresentative) {
+                 const repPosScreen = selectedRepresentative.position.clone().project(camera);
+                 const currentMouseAngle = Math.atan2(mouse.y - repPosScreen.y, mouse.x - repPosScreen.x);
+                 let targetAngle = currentMouseAngle - initialRotationAngle;
+                 selectedRepresentative.rotation.y = targetAngle;
+                 updateSelectedInfo(); // Update direction display
+             } else if (isDragging && selectedRepresentative) {
+                 const intersectionPoint = getGroundIntersection(event);
+                 if (intersectionPoint) {
+                     // Calculate new position based on intersection and offset
+                     const newPosX = intersectionPoint.x - dragOffset.x;
+                     const newPosZ = intersectionPoint.z - dragOffset.z;
+                     selectedRepresentative.position.x = newPosX;
+                     selectedRepresentative.position.z = newPosZ;
+
+                    // Maintain correct Y position based on scale using offset from userData
+                    const currentScale = selectedRepresentative.userData.currentScale || 1.0;
+                    const baseOffsetY = selectedRepresentative.userData.baseOffsetY; // <<< Pegar de userData
+                     if (typeof baseOffsetY === 'number') { // <<< Verificar se existe
+                        selectedRepresentative.position.y = baseOffsetY * currentScale;
+                    } else {
+                         console.warn("userData.baseOffsetY não encontrado para", selectedRepresentative.userData.label);
+                         // Fallback
+                         selectedRepresentative.position.y = (0.1) * currentScale; // Usa 0.1 como fallback
+                    }
+
+                     updateSelectedInfo(); // Update position display
+                 }
+             } else {
+                 // Update cursor based on hover state when not dragging/rotating
+                 const intersectedRep = getIntersectedObject(event);
+                 if (intersectedRep) {
+                     canvasContainer.style.cursor = 'pointer';
+                 } else if (shiftKeyPressed && selectedRepresentative) {
+                     // Potential rotation target if mouse is over selected rep
+                     canvasContainer.style.cursor = 'crosshair';
+                 } else {
+                     canvasContainer.style.cursor = controls.enabled ? 'grab' : 'grabbing'; // Reflect orbit controls state
+                 }
+             }
+         }
+
+         function onMouseUp(event) {
+             if (event.button !== 0) return; // Only left click
+
+             if (isRotating) {
+                 isRotating = false;
+                 controls.enabled = true; // Re-enable OrbitControls
+                 updateSelectedInfo(); // Final update after rotation
+                 canvasContainer.style.cursor = 'grab'; // Reset cursor
+             } else if (isDragging) {
+                 isDragging = false;
+                 controls.enabled = true; // Re-enable OrbitControls
+                 updateSelectedInfo(); // Final update after drag
+                 canvasContainer.style.cursor = 'grab'; // Reset cursor
+             }
+             // Reset cursor if needed
+             if (!isDragging && !isRotating) {
+                  const intersectedRep = getIntersectedObject(event); // Recheck hover state after mouse up
+                  canvasContainer.style.cursor = intersectedRep ? 'pointer' : 'grab';
+             }
+         }
+
+         function onKeyDown(event) {
+             // Prevent browser default actions for keys used in controls if needed
+             // if (['w', 'a', 's', 'd', 'W', 'A', 'S', 'D', 'Shift'].includes(event.key)) {
+             //     // event.preventDefault(); // Be cautious with this
+             // }
+
+             // --- Handle Shift Key ---
+             if (event.key === 'Shift' && !shiftKeyPressed) {
+                 shiftKeyPressed = true;
+                 // Change cursor immediately if a rep is selected and mouse is potentially over it
+                 if (selectedRepresentative && !isDragging && !isRotating) {
+                      // Check if mouse is roughly over the selected rep? Maybe not necessary, just change globally.
+                     canvasContainer.style.cursor = 'crosshair';
+                 }
+             }
+
+             // --- Handle WSAD Movement ---
+             switch (event.key.toLowerCase()) {
+                 case 'w': moveState.forward = true; break;
+                 case 's': moveState.backward = true; break;
+                 case 'a': moveState.left = true; break;
+                 case 'd': moveState.right = true; break;
+             }
+         }
+
+         function onKeyUp(event) {
+             // --- Handle Shift Key ---
+             if (event.key === 'Shift') {
+                 shiftKeyPressed = false;
+                 // Reset cursor if needed
+                 if (!isDragging && !isRotating) {
+                     const intersectedRep = getIntersectedObject(event); // Recheck hover state
+                     canvasContainer.style.cursor = intersectedRep ? 'pointer' : 'grab';
+                 }
+             }
+
+             // --- Handle WSAD Movement ---
+             switch (event.key.toLowerCase()) {
+                 case 'w': moveState.forward = false; break;
+                 case 's': moveState.backward = false; break;
+                 case 'a': moveState.left = false; break;
+                 case 'd': moveState.right = false; break;
+             }
+         }
+		 
+		 // --- Funções de Feedback e Orientação (MODIFIED) ---
+         function updateSelectedInfo() {
+             if (!selectedRepresentative) {
+                 selectedControlsDiv.style.display = 'none';
+                 return;
+             }
+
+             const pos = selectedRepresentative.position;
+             selectedPosSpan.textContent = `X: ${pos.x.toFixed(1)}, Z: ${pos.z.toFixed(1)}`;
+
+             // Calculate forward direction based on the representative's rotation (Y-axis)
+             const forward = new THREE.Vector3(0, 0, -1); // Base direction in object space
+             forward.applyQuaternion(selectedRepresentative.quaternion); // Apply world rotation
+             forward.normalize();
+
+             let baseDirText = `(${forward.x.toFixed(2)}, ${forward.z.toFixed(2)})`;
+             let proximityHtml = '<h4>Proximidade:</h4>';
+             let closestRep = null;
+             let minDist = Infinity;
+             let facingRep = null;
+             let maxDot = -Infinity; // Use a threshold slightly less than 1 for "facing"
+
+             representatives.forEach(otherRep => {
+                 if (otherRep === selectedRepresentative) return;
+
+                 const dist = selectedRepresentative.position.distanceTo(otherRep.position);
+                 proximityHtml += `<p>- ${otherRep.userData.label}: ${dist.toFixed(1)} u.</p>`;
+
+                 if (dist < minDist) {
+                     minDist = dist;
+                     closestRep = otherRep;
+                 }
+
+                 // Check if looking towards this other representative
+                 const directionToOther = otherRep.position.clone().sub(selectedRepresentative.position).normalize();
+                 const dotProduct = forward.dot(directionToOther);
+
+                 // Threshold for "facing" (e.g., > 0.85 means within ~31 degrees cone)
+                 if (dotProduct > 0.85 && dotProduct > maxDot) {
+                     maxDot = dotProduct;
+                     facingRep = otherRep;
+                 }
+             });
+
+             proximityInfoDiv.innerHTML = proximityHtml;
+
+             // Update Direction Text
+             if (facingRep) {
+                 baseDirText += ` (Direto para ${facingRep.userData.label})`;
+             } else if (maxDot > 0.5) { // Looser threshold for general direction
+                 baseDirText += ` (Na direção geral de outros)`;
+             } else {
+                 baseDirText += ` (Livre/Não alinhado)`;
+             }
+             selectedDirSpan.textContent = baseDirText;
+
+             // Update Reflection Prompts
+             let reflectionHtml = '<h4>Reflexão:</h4>';
+             const currentScale = selectedRepresentative.userData.currentScale || 1.0; // Get scale for thresholds
+             if (closestRep) {
+                 // Adjust proximity thresholds based on scale (simple linear scaling)
+                 const closeThreshold = 2.0 * currentScale;
+                 const farThreshold = 15.0 * currentScale;
+
+                 if (minDist < closeThreshold) {
+                     reflectionHtml += `<p>Como se sente estando tão próximo(a) de '${closestRep.userData.label}'?</p>`;
+                 } else if (minDist > farThreshold) {
+                     reflectionHtml += `<p>O que significa esta distância (${minDist.toFixed(1)} u) em relação a '${closestRep.userData.label}' e aos outros?</p>`;
+                 }
+             } else if (representatives.length > 1) {
+                 reflectionHtml += `<p>Como é a sensação de estar isolado(a) no campo?</p>`;
+             }
+
+             if (facingRep) {
+                 reflectionHtml += `<p>Qual a intenção ou sentimento ao olhar diretamente para '${facingRep.userData.label}'?</p>`;
+             } else {
+                 // Check if looking away from someone
+                 const lookingAwayFrom = representatives.find(otherRep => {
+                     if (otherRep === selectedRepresentative) return false;
+                     const directionToOther = otherRep.position.clone().sub(selectedRepresentative.position).normalize();
+                     return forward.dot(directionToOther) < -0.85; // Threshold for looking directly away
+                 });
+                 if (lookingAwayFrom) {
+                     reflectionHtml += `<p>O que significa estar de costas para '${lookingAwayFrom.userData.label}'?</p>`;
+                 } else {
+                     reflectionHtml += `<p>Para onde seu foco está direcionado neste momento?</p>`;
+                 }
+             }
+             reflectionHtml += `<p>O que mudaria se você alterasse sua posição, direção ou tamanho?</p>`; // Added size to prompt
+             reflectionPromptDiv.innerHTML = reflectionHtml;
+
+             // Make sure controls panel is visible
+             selectedControlsDiv.style.display = 'block';
+         }
+
+
+         // --- Funções para Exercícios ---
+         function populateExerciseSelect() {
+             exerciseSelect.innerHTML = '<option value="free">Exploração Livre</option>';
+             for (const key in exercises) {
+                 const option = document.createElement('option');
+                 option.value = key;
+                 // Correctly escape template literal characters if needed, though simple text should be fine here
+                 option.textContent = `${exercises[key].name} (${exercises[key].reps} reps)`;
+                 exerciseSelect.appendChild(option);
+             }
+         }
+
+         function updateExerciseInfo() {
+             const selectedKey = exerciseSelect.value;
+             if (selectedKey === 'free') {
+                 exerciseInfoDiv.innerHTML = "Modo de exploração livre. Adicione e mova representantes como desejar.";
+                 startExerciseBtn.disabled = true;
+                 startExerciseBtn.textContent = "Iniciar Exercício";
+             } else if (exercises[selectedKey]) {
+                 const ex = exercises[selectedKey];
+                 exerciseInfoDiv.innerHTML = `<strong>${ex.name} (${ex.reps} reps):</strong> ${ex.description}`;
+                 startExerciseBtn.disabled = inExerciseMode;
+                 startExerciseBtn.textContent = "Iniciar Exercício";
+             } else {
+                  exerciseInfoDiv.innerHTML = "Selecione um exercício.";
+                  startExerciseBtn.disabled = true;
+                  startExerciseBtn.textContent = "Iniciar Exercício";
+             }
+             // Finaliza exercício se mudar a seleção E estiver em modo exercício
+             if (inExerciseMode && selectedKey !== currentExercise && selectedKey !== 'free') {
+                 endExercise();
+             }
+         }
+
+         function startExercise() {
+             const selectedKey = exerciseSelect.value;
+             if (selectedKey === 'free' || !exercises[selectedKey]) return;
+             if (representatives.length > 0) {
+                 if (!confirm("Deseja limpar os representantes atuais antes de iniciar o exercício?")) { return; }
+                 removeAllRepresentatives();
+             }
+             currentExercise = selectedKey; currentStepIndex = 0; inExerciseMode = true;
+             guidanceTitle.textContent = `Guia: ${exercises[currentExercise].name}`;
+             showGuidanceStep(currentStepIndex);
+             guidancePanel.classList.add('visible');
+             startExerciseBtn.textContent = "Exercício em Andamento"; startExerciseBtn.disabled = true; exerciseSelect.disabled = true;
+             console.log(`Iniciando exercício: ${currentExercise}`);
+             // Specific setup for timeline exercise
+             if (currentExercise === 'timeline') {
+                 // createPawnRepresentative now correctly sets the initial Y position
+                 timelineMarkers.nascimento = createPawnRepresentative("Nascimento", new THREE.Vector3(0, 0, -30), 0xaaaaaa);
+                 timelineMarkers.futuro = createPawnRepresentative("Futuro", new THREE.Vector3(0, 0, 30), 0xaaaaaa);
+                 if(timelineMarkers.nascimento) {
+                     timelineMarkers.nascimento.userData.isLocked = true; // Custom flag, not enforced yet
+                     // Y position is handled by createPawnRepresentative now
+                 }
+                 if(timelineMarkers.futuro) {
+                     timelineMarkers.futuro.userData.isLocked = true;
+                      // Y position is handled by createPawnRepresentative now
+                 }
+             }
+         }
+
+         function endExercise() {
+             inExerciseMode = false; currentExercise = null; currentStepIndex = 0;
+             guidancePanel.classList.remove('visible');
+             closeAnalysisModal(); // Ensure analysis modal is closed
+             exerciseSelect.value = 'free'; exerciseSelect.disabled = false;
+             updateExerciseInfo();
+             // Remove timeline markers if they exist
+             if (timelineMarkers.nascimento) {
+                 const idxN = representatives.indexOf(timelineMarkers.nascimento);
+                 if (idxN > -1) representatives.splice(idxN, 1);
+                 scene.remove(timelineMarkers.nascimento);
+             }
+             if (timelineMarkers.futuro) {
+                 const idxF = representatives.indexOf(timelineMarkers.futuro);
+                 if (idxF > -1) representatives.splice(idxF, 1);
+                 scene.remove(timelineMarkers.futuro);
+             }
+             timelineMarkers = {};
+             console.log("Exercício finalizado.");
+         }
+
+         function showGuidanceStep(stepIndex) {
+             if (!inExerciseMode || !currentExercise || !exercises[currentExercise]) return;
+             const exercise = exercises[currentExercise];
+             const steps = exercise.steps;
+             if (stepIndex < 0 || stepIndex >= steps.length) return;
+
+             currentStepIndex = stepIndex;
+             guidanceContent.innerHTML = `<p><strong>Passo ${stepIndex + 1}:</strong> ${steps[stepIndex]}</p>`;
+             stepCounterSpan.textContent = `Passo ${stepIndex + 1} / ${steps.length}`;
+
+             const isLastStep = stepIndex === steps.length - 1;
+             prevStepBtn.disabled = stepIndex === 0;
+             nextStepBtn.textContent = isLastStep ? "Analisar Disposição" : "Próximo";
+             nextStepBtn.disabled = false;
+         }
+
+         function handleNextStepOrAnalyze() {
+             if (!inExerciseMode || !currentExercise) return;
+             const exercise = exercises[currentExercise];
+             const steps = exercise.steps;
+             const isLastStep = currentStepIndex === steps.length - 1;
+
+             if (isLastStep) {
+                 analyzeDisposition();
+                 nextStepBtn.disabled = true;
+                 nextStepBtn.textContent = "Análise Exibida";
+             } else {
+                 if (currentStepIndex < steps.length - 1) {
+                     showGuidanceStep(currentStepIndex + 1);
+                 }
+             }
+         }
+
+         function prevGuidanceStep() {
+             if (currentStepIndex > 0) {
+                 showGuidanceStep(currentStepIndex - 1);
+             }
+         }
+
+         // --- Função de Análise (MODIFIED - Consider scale and typo fix) ---
+         function analyzeDisposition() {
+             console.log("Analisando disposição...");
+             let analysisHTML = `<ul>`;
+             const voce = representatives.find(r => r.userData.label.toLowerCase() === 'você' || r.userData.label.toLowerCase() === 'eu');
+             const pai = representatives.find(r => r.userData.label.toLowerCase() === 'pai');
+             const mae = representatives.find(r => r.userData.label.toLowerCase() === 'mãe');
+
+             if (!voce) {
+                 analysisHTML += "<li>Representante 'Você' não encontrado para análise detalhada.</li>";
+             } else {
+                 const scaleVoce = voce.userData.currentScale || 1.0;
+                 analysisHTML += `<li>'Você' está com tamanho <strong>${scaleVoce.toFixed(1)}x</strong>. Como isso se relaciona com os outros?</li>`;
+
+                 // 1. Proximidade com Pais (consider scale for thresholds)
+                 const proxThreshold = 3.0 * scaleVoce; // Closer threshold scales with size
+                 const distThreshold = 15.0 * scaleVoce; // Distant threshold scales with size
+
+                 if (pai) {
+                     const distPai = voce.position.distanceTo(pai.position);
+                     if (distPai < proxThreshold) analysisHTML += `<li>Você está <strong>muito próximo(a)</strong> de 'Pai' (${distPai.toFixed(1)} u). Isso pode indicar forte conexão ou emaranhamento.</li>`;
+                     else if (distPai > distThreshold) analysisHTML += `<li>Você está <strong>distante</strong> de 'Pai' (${distPai.toFixed(1)} u). Isso pode sugerir necessidade de conexão ou separação saudável.</li>`;
+                     else analysisHTML += `<li>Distância a 'Pai': ${distPai.toFixed(1)} u.</li>`;
+                 }
+                 if (mae) {
+                     const distMae = voce.position.distanceTo(mae.position);
+                     if (distMae < proxThreshold) analysisHTML += `<li>Você está <strong>muito próximo(a)</strong> de 'Mãe' (${distMae.toFixed(1)} u). Isso pode indicar forte vínculo ou dificuldade na individuação.</li>`;
+                     else if (distMae > distThreshold) analysisHTML += `<li>Você está <strong>distante</strong> de 'Mãe' (${distMae.toFixed(1)} u). Pode refletir a busca por autonomia ou uma ferida na relação.</li>`;
+                     else analysisHTML += `<li>Distância a 'Mãe': ${distMae.toFixed(1)} u.</li>`;
+                 }
+
+                 // 2. Direção em Relação aos Pais
+                 const forwardVoce = new THREE.Vector3(0, 0, -1).applyQuaternion(voce.quaternion).normalize();
+                 if (pai) {
+                     const dirToPai = pai.position.clone().sub(voce.position).normalize();
+                     const dotPai = forwardVoce.dot(dirToPai);
+                     if (dotPai > 0.85) analysisHTML += `<li>Você está olhando <strong>diretamente para 'Pai'</strong>. Pode indicar busca por reconhecimento, apoio ou confronto.</li>`;
+                     else if (dotPai < -0.85) analysisHTML += `<li>Você está <strong>de costas para 'Pai'</strong>. Pode indicar negação, corte ou movimento para a própria vida.</li>`;
+                 }
+                 if (mae) {
+                     const dirToMae = mae.position.clone().sub(voce.position).normalize();
+                     const dotMae = forwardVoce.dot(dirToMae);
+                     if (dotMae > 0.85) analysisHTML += `<li>Você está olhando <strong>diretamente para 'Mãe'</strong>. Pode indicar busca por nutrição, segurança ou resolução.</li>`;
+                     else if (dotMae < -0.85) analysisHTML += `<li>Você está <strong>de costas para 'Mãe'</strong>. Pode indicar movimento para a autonomia, ou dificuldade em receber.</li>`;
+                 }
+
+                 // 3. Posição Relativa (Ordem - Simplificado, specific to 'ordem' exercise)
+                 if (pai && mae && currentExercise === 'ordem') {
+                     const avgParentZ = (pai.position.z + mae.position.z) / 2;
+                     if (voce.position.z > avgParentZ + 1) {
+                          // Correctly escaping characters for template literal inside HTML attribute (though not strictly needed here)
+                         analysisHTML += `<li>Sua posição (Z=${voce.position.z.toFixed(1)}) está <strong>atrás</strong> da média dos pais (Z=${avgParentZ.toFixed(1)}). Isso pode sugerir que você está tomando seu lugar como filho(a).</li>`;
+                     } else if (voce.position.z < avgParentZ - 1) {
+                         analysisHTML += `<li>Sua posição (Z=${voce.position.z.toFixed(1)}) está <strong>à frente</strong> da média dos pais (Z=${avgParentZ.toFixed(1)}). Isso pode indicar uma possível inversão de papéis ou assunção de responsabilidades parentais.</li>`;
+                     }
+                 }
+             }
+
+             // 4. Isolamento/Agrupamento (Consider scale for isolation threshold)
+             let maxDistAmongAll = 0;
+             let isolated = [];
+             let isGrouped = true; // Assume grouped initially
+             const isolationThresholdBase = 15.0;
+             const groupingThresholdBase = 10.0;
+
+             if (representatives.length > 2) {
+                 representatives.forEach(rep => {
+                     let minDistToOther = Infinity;
+                     const repScale = rep.userData.currentScale || 1.0;
+                     representatives.forEach(other => {
+                         if (rep !== other) {
+                             const dist = rep.position.distanceTo(other.position);
+                             minDistToOther = Math.min(minDistToOther, dist);
+                             maxDistAmongAll = Math.max(maxDistAmongAll, dist); // Overall max distance (less useful for grouping)
+                         }
+                     });
+                     // Isolation check
+                     if (minDistToOther > isolationThresholdBase * repScale) {
+                         isolated.push(rep.userData.label);
+                         isGrouped = false; // If anyone is isolated, it's not fully grouped in this simple check
+                     }
+                     // Grouping check (if any rep is far from its nearest neighbor, consider not tightly grouped)
+                     if(minDistToOther > groupingThresholdBase * repScale) {
+                         isGrouped = false;
+                     }
+                 });
+             } else {
+                 isGrouped = false; // Cannot be grouped with less than 3 reps
+             }
+
+             if (isolated.length > 0) {
+                 analysisHTML += `<li>Os seguintes representantes parecem <strong>isolados</strong>: ${isolated.join(', ')}. O que isso representa para você?</li>`;
+             // Check isGrouped AFTER checking isolated, use corrected variable name
+             } else if (isGrouped && representatives.length > 2) { // <<< CORRIGIDO TYPO: isGrouped
+                  analysisHTML += `<li>Os representantes parecem <strong>agrupados</strong>. Isso sugere forte coesão ou talvez falta de espaço individual?</li>`;
+              }
+
+
+              analysisHTML += "</ul>";
+              analysisContent.innerHTML = analysisHTML;
+              analysisModal.classList.add('visible');
+              // Hide guidance panel when analysis appears
+              guidancePanel.classList.remove('visible');
+          }
+
+          function closeAnalysisModal() {
+              analysisModal.classList.remove('visible');
+              // End the exercise when the analysis modal is closed
+              if (inExerciseMode) {
+                  endExercise();
+              }
+          }
+
+
+         // --- Loop de Animação e Redimensionamento (MODIFIED for WSAD) ---
+         function animate() {
+             requestAnimationFrame(animate);
+             const delta = clock.getDelta(); // Get time difference for smooth movement
+
+             // --- WSAD Camera Movement Logic ---
+             let moveForward = (moveState.forward ? 1 : 0) + (moveState.backward ? -1 : 0);
+             let moveRight = (moveState.right ? 1 : 0) + (moveState.left ? -1 : 0);
+
+             if (moveForward !== 0 || moveRight !== 0) {
+                 // Get camera direction (horizontal plane)
+                 const cameraDirection = new THREE.Vector3();
+                 camera.getWorldDirection(cameraDirection);
+                 cameraDirection.y = 0; // Project onto XZ plane
+                 cameraDirection.normalize();
+
+                 // Calculate right vector (perpendicular to forward)
+                 const cameraRight = new THREE.Vector3();
+                 // Use crossVectors(camera.up, cameraDirection) for standard right vector relative to look direction
+                 cameraRight.crossVectors(camera.up, cameraDirection).normalize();
+
+                 // Calculate total movement vector
+                 const moveVector = new THREE.Vector3();
+                 moveVector.addScaledVector(cameraDirection, moveForward);
+                 moveVector.addScaledVector(cameraRight, -moveRight); // Negate moveRight for A/D convention
+                 // Normalize combined vector if diagonal movement shouldn't be faster (optional, often preferred)
+                 if (moveForward !== 0 && moveRight !== 0) {
+                    moveVector.normalize();
+                 }
+
+                 // Apply movement speed and delta time
+                 // Adjusted speed multiplier for potentially smoother feel
+                 const moveAmount = MOVE_SPEED * 15 * delta; // Reduced multiplier from 50
+                 moveVector.multiplyScalar(moveAmount);
+
+                 // Apply movement to both camera position and controls target
+                 camera.position.add(moveVector);
+                 controls.target.add(moveVector);
+             }
+             // --- End WSAD Logic ---
+
+             controls.update(); // Update OrbitControls (handles damping, limits, etc.)
+             renderer.render(scene, camera);
+         }
+
+         function onWindowResize() {
+             camera.aspect = window.innerWidth / window.innerHeight;
+             camera.updateProjectionMatrix();
+             renderer.setSize(window.innerWidth, window.innerHeight);
+         }
+
+         // --- Iniciar ---
+         init();
+
+    </script>
+</body>
+</html>
